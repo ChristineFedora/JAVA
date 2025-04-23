@@ -1,0 +1,133 @@
+import java.io.*;
+import java.time.*;
+import java.util.*;
+
+class Vehicle {
+    String plate, type, spot;
+    LocalDateTime entry, exit;
+    Vehicle(String p, String t, String s) { 
+        plate = p; type = t; spot = s; entry = LocalDateTime.now(); 
+    }
+}
+
+public class ParkingLot {
+    static final int MLCP = 50, GROUND = 40, TWO_WHEELER = 30;
+    static List<String> mlcp = new ArrayList<>(), ground = new ArrayList<>(), twoWheeler = new ArrayList<>();
+    static List<Vehicle> vehicles = new ArrayList<>();
+    static final String FILE = "parking.txt";
+    static Scanner sc = new Scanner(System.in);
+
+    public static void main(String[] args) {
+        load();
+        while (true) {
+            try {
+                System.out.print("\n1.Park\n2.Retrieve\n3.Availability\n4.Exit\nChoose: ");
+                int choice = Integer.parseInt(sc.nextLine());
+                if (choice == 1) park();
+                else if (choice == 2) retrieve();
+                else if (choice == 3) availability();
+                else if (choice == 4) { save(); System.exit(0); }
+                else System.out.println("Invalid choice");
+            } catch (Exception e) { System.out.println("Error: " + e.getMessage()); }
+        }
+    }
+
+    static void park() throws Exception {
+        System.out.println("1.Car\n2.Two Wheeler\nChoose: ");
+        String type = Integer.parseInt(sc.nextLine()) == 1 ? "car" : "twowheeler";
+        
+        System.out.print("License: ");
+        String plate = sc.nextLine().toUpperCase();
+        if (vehicles.stream().anyMatch(v -> v.plate.equals(plate)))
+            throw new Exception("Already parked");
+        
+        String spot = assignSpot(type);
+        if (spot == null) throw new Exception("Parking full");
+        
+        vehicles.add(new Vehicle(plate, type, spot));
+        System.out.println("Parked at " + spot);
+    }
+
+    static String assignSpot(String type) {
+        if (type.equals("twowheeler")) {
+            if (twoWheeler.size() < TWO_WHEELER) {
+                String spot = "TW-" + (twoWheeler.size() + 1);
+                twoWheeler.add(spot);
+                return spot;
+            }
+        } else {
+            if (mlcp.size() < MLCP) {
+                String spot = "MLCP-" + (mlcp.size() + 1);
+                mlcp.add(spot);
+                return spot;
+            }
+            if (ground.size() < GROUND) {
+                String spot = "GRND-" + (ground.size() + 1);
+                ground.add(spot);
+                return spot;
+            }
+        }
+        return null;
+    }
+
+    static void retrieve() throws Exception {
+        System.out.print("License: ");
+        String plate = sc.nextLine().toUpperCase();
+        Vehicle v = findVehicle(plate);
+        if (v == null) throw new Exception("Not found");
+        
+        v.exit = LocalDateTime.now();
+        removeFromParking(v);
+        vehicles.remove(v);
+        System.out.printf("Retrieved from %s\nParked for %d mins\n",
+            v.spot, Duration.between(v.entry, v.exit).toMinutes());
+    }
+
+    static Vehicle findVehicle(String plate) {
+        return vehicles.stream()
+            .filter(v -> v.plate.equals(plate))
+            .findFirst()
+            .orElse(null);
+    }
+
+    static void removeFromParking(Vehicle v) {
+        List<String> parking = v.type.equals("twowheeler") ? twoWheeler :
+                             v.spot.startsWith("MLCP") ? mlcp : ground;
+        parking.remove(v.spot);
+    }
+
+    static void availability() {
+        System.out.printf("\nMLCP: %d/%d\nGround: %d/%d\nTwo Wheeler: %d/%d\n",
+            MLCP - mlcp.size(), MLCP, 
+            GROUND - ground.size(), GROUND, 
+            TWO_WHEELER - twoWheeler.size(), TWO_WHEELER);
+    }
+
+    static void load() {
+        try (BufferedReader br = new BufferedReader(new FileReader(FILE))) {
+            br.lines().forEach(line -> {
+                String[] d = line.split(",");
+                if (d.length >= 4) {
+                    Vehicle v = new Vehicle(d[0], d[1], d[2]);
+                    v.entry = LocalDateTime.parse(d[3]);
+                    vehicles.add(v);
+                    addToParking(v);
+                }
+            });
+        } catch (FileNotFoundException e) {} 
+        catch (Exception e) { System.out.println("Load error"); }
+    }
+
+    static void addToParking(Vehicle v) {
+        List<String> parking = v.type.equals("twowheeler") ? twoWheeler :
+                             v.spot.startsWith("MLCP") ? mlcp : ground;
+        parking.add(v.spot);
+    }
+
+    static void save() {
+        try (PrintWriter pw = new PrintWriter(FILE)) {
+            vehicles.forEach(v -> pw.println(
+                String.join(",", v.plate, v.type, v.spot, v.entry.toString())));
+        } catch (Exception e) { System.out.println("Save error"); }
+    }
+}
