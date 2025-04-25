@@ -44,8 +44,9 @@ public class ParkingLot {
         String spot = assignSpot(type);
         if (spot == null) throw new Exception("Parking full");
         
-        vehicles.add(new Vehicle(plate, type, spot));
-        System.out.println("Parked at " + spot);
+        Vehicle vehicle = new Vehicle(plate, type, spot);
+        vehicles.add(vehicle);
+        System.out.println("Parked at " + spot + " at " + formatDateTime(vehicle.entry));
     }
 
     static String assignSpot(String type) {
@@ -79,8 +80,17 @@ public class ParkingLot {
         v.exit = LocalDateTime.now();
         removeFromParking(v);
         vehicles.remove(v);
-        System.out.printf("Retrieved from %s\nParked for %d mins\n",
-            v.spot, Duration.between(v.entry, v.exit).toMinutes());
+        System.out.println("\nVehicle Details:");
+        System.out.println("License: " + v.plate);
+        System.out.println("Type: " + v.type);
+        System.out.println("Spot: " + v.spot);
+        System.out.println("Entry Time: " + formatDateTime(v.entry));
+        System.out.println("Exit Time: " + formatDateTime(v.exit));
+        System.out.printf("Parked Duration: %d mins\n", Duration.between(v.entry, v.exit).toMinutes());
+    }
+
+    static String formatDateTime(LocalDateTime dateTime) {
+        return dateTime.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
     }
 
     static Vehicle findVehicle(String plate) {
